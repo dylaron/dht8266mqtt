@@ -17,6 +17,8 @@
 #include <CircularBuffer.h>
 #include "SlopeTracker.h"
 
+#include "iconset_16x12.xbm"
+
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
 #include "arduino_secrets.h"
@@ -170,7 +172,12 @@ void loop()
     if (wifi_ok)
     {
       display.setFont(ArialMT_Plain_10);
-      display.drawString(x_2col, y_3row, "WiFi");
+      // display.drawString(x_2col, y_3row, "WiFi");
+      display.drawXbm(112, 1, Iot_Icon_width, Iot_Icon_height, wifi1_icon16x12);
+    }
+    if (Blynk.CONNECTED)
+    {
+      display.drawXbm(112, 15, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
     }
     display.display();
   };
