@@ -156,6 +156,7 @@ void loop()
     tele_topic += THIS_DEVICE_ID;
     tele_topic += MQTT_TOPIC_SUFFIX;
     client.publish(tele_topic, telemetry_json);
+    display.drawXbm(112, 29, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
     mqtt_timer_due = millis() + mqtt_timer_int;
   }
   if (millis() > disp_timer_due)
@@ -178,6 +179,9 @@ void loop()
     if (Blynk.CONNECTED)
     {
       display.drawXbm(112, 15, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
+    }
+    if (client.isConnected()) {
+      display.drawXbm(112, 29, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
     }
     display.display();
   };
