@@ -16,7 +16,7 @@ Create `arduino_secrets.h` as below
 ```
 #define BLYNK_TEMPLATE_ID "....."
 #define BLYNK_DEVICE_NAME "....."
-#define BLYNK_AUTH "..............."
+#define BLYNK_AUTH_TOKEN "..............."
 
 #define MQTT_BROKER "**.**.**.**"
 #define MQTT_USER "..."

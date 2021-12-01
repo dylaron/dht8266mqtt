@@ -1,0 +1,1 @@
+#define DHTPIN 23

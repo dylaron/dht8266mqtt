@@ -1,35 +1,40 @@
 #include <Arduino.h>
 #include <DHT.h> // Digital relative humidity & temperature sensor AM2302/DHT22
-//#include <WiFi.h>
-//#include <WiFiClient.h>
-//#include <BlynkSimpleEsp32.h>
-#include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
+
+#ifdef ARDUINO_ESP8266_WEMOS_D1MINI
 #include <WiFiClientSecure.h>
-#include <ESP8266HTTPClient.h>
 #include <DNSServer.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <BlynkSimpleEsp8266.h>
 #include <ESP8266WebServer.h>
+#include "DefinePin8266.h"
+#endif
+
+#ifdef ARDUINO_ESP32_DEV
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include "DefinePin32.h"
+#endif
+
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
-#include <Wire.h>        // Library for I2C communication
-#include <SH1106Wire.h>
 #include <EspMQTTClient.h>
+#include <Wire.h> // Library for I2C communication
+#include <SH1106Wire.h>
 #include <ArduinoJson.h>
 #include <CircularBuffer.h>
 #include "SlopeTracker.h"
 #include "iconset_16x12.xbm"
 #include <ezTime.h>
+#include "arduino_secrets.h"
 
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
-#include "arduino_secrets.h"
+WiFiManager wifiManager;
 
-// You should get Auth Token in the Blynk App.
-// Go to the Project Settings (nut icon).
-char auth[] = BLYNK_AUTH;
-#define THIS_DEVICE_ID "home_office"
+char auth[] = BLYNK_AUTH_TOKEN;
 
-#define LED_PIN D3
-#define DHTPIN D5
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -52,7 +57,7 @@ const uint8_t avg_sample_time = 250;
 SlopeTracker t_short_buffer(4, avg_sample_time / 60000.0);
 SlopeTracker rh_short_buffer(4, avg_sample_time / 60000.0);
 unsigned long avg_timer_due = 0, mqtt_timer_due = 0, disp_timer_due = 0;
-uint8_t x_1col = 28, x_2col = 96,  y_0row = 1, y_1row = 20, y_2row = 44;
+uint8_t x_1col = 28, x_2col = 96, y_0row = 1, y_1row = 20, y_2row = 44;
 
 Timezone myTZ;
 // Provide official timezone names
@@ -88,15 +93,18 @@ void setup()
 {
   // Debug console
   Serial.begin(9600);
-  pinMode(LED_PIN, OUTPUT);
   // connect_to_wifi();
-  WiFiManager wifiManager;
   wifiManager.setTimeout(180);
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+  #ifdef ARDUINO_ESP32_DEV
+  wifiManager.setConfigPortalBlocking(false);
+  #endif
   wifiManager.autoConnect("AutoConnectAP");
-  Serial.println("connected...yeey :)");
+  delay(2000);
 
   if (WiFi.status() == WL_CONNECTED)
   {
+    Serial.println("connected...yeey :)");
     Blynk.config(auth, IPAddress(64, 225, 16, 22), 8080);
     // You can also specify server:
     // Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
@@ -129,7 +137,6 @@ void loop()
 {
   bool wifi_ok = (WiFi.status() == WL_CONNECTED);
   client.loop();
-  digitalWrite(LED_PIN, wifi_ok);
   rh_realtime = dht.readHumidity();
   temp_realtime = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit
 
