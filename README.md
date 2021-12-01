@@ -6,7 +6,7 @@
 ![Picture](pic/t_rh_station.jpg)
 
 ## Hardware
-- ESP8266
+- ESP32 or ESP8266 microcontroller development board
 - DHT22 Temperature & Relative Humidity Sensor
 - 128x64 OLED Display with SH1106 controller and I2C Interface
 - A mini breadboard
