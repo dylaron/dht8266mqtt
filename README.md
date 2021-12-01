@@ -8,7 +8,7 @@
 ## Hardware
 - ESP8266
 - DHT22 Temperature & Relative Humidity Sensor
-- 128x64 OLED Display with SH1102 controller and I2C Interface
+- 128x64 OLED Display with SH1106 controller and I2C Interface
 - A mini breadboard
 
 ## configuration
