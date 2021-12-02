@@ -2,12 +2,12 @@
 #include <DHT.h> // Digital relative humidity & temperature sensor AM2302/DHT22
 
 #ifdef ARDUINO_ESP8266_WEMOS_D1MINI
-#include <WiFiClientSecure.h>
-#include <DNSServer.h>
+//#include <WiFiClientSecure.h>
+//#include <DNSServer.h>
+//#include <ESP8266HTTPClient.h>
+//#include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 #include <BlynkSimpleEsp8266.h>
-#include <ESP8266WebServer.h>
 #include "DefinePin8266.h"
 #endif
 
