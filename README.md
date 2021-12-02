@@ -23,4 +23,6 @@ Create `arduino_secrets.h` as below
 #define MQTT_PASS "..."
 #define MQTT_TOPIC_PREFIX "dt/..../"
 #define MQTT_TOPIC_SUFFIX "/..."
+
+#define THIS_DEVICE_ID "ThisCoolESP"
 ```
