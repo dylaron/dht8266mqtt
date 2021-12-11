@@ -28,6 +28,7 @@
 #include "iconset_16x12.xbm"
 #include <ezTime.h>
 #include "arduino_secrets.h"
+#include <Ticker.h>
 
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
@@ -52,11 +53,19 @@ EspMQTTClient client(
 
 float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva;
 
-const unsigned long mqtt_timer_int = 60000L, disp_timer_int = 1000;
-const uint8_t avg_sample_time = 250;
+const unsigned long mqtt_timer_int = 60000L;
+const uint8_t avg_sample_time = 250, disp_timer_int = 1000;
+
+void read_sensor();
+void display_value();
+void send_dht_mqtt();
+
+Ticker timer_measure(read_sensor, avg_sample_time);
+Ticker timer_display(display_value, disp_timer_int);
+Ticker timer_mqtt(send_dht_mqtt, mqtt_timer_int);
+
 SlopeTracker t_short_buffer(4, avg_sample_time / 60000.0);
 SlopeTracker rh_short_buffer(4, avg_sample_time / 60000.0);
-unsigned long avg_timer_due = 0, mqtt_timer_due = 0, disp_timer_due = 0;
 uint8_t x_1col = 28, x_2col = 96, y_0row = 1, y_1row = 20, y_2row = 44;
 
 Timezone myTZ;
@@ -72,18 +81,6 @@ void sendSensor()
   Blynk.virtualWrite(V6, t_1s_mva);
 }
 
-void draw_background()
-{
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(x_1col, y_1row, "T");
-  display.drawString(x_1col, y_2row, "RH");
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(x_2col, y_1row, "'C");
-  display.drawString(x_2col, y_2row, "%");
-}
-
 void onConnectionEstablished()
 {
   // Subscribe to "mytopic/test" and display received message to Serial
@@ -96,9 +93,9 @@ void setup()
   // connect_to_wifi();
   wifiManager.setTimeout(180);
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-  #ifdef ARDUINO_ESP32_DEV
+#ifdef ARDUINO_ESP32_DEV
   wifiManager.setConfigPortalBlocking(false);
-  #endif
+#endif
   wifiManager.autoConnect("AutoConnectAP");
   delay(2000);
 
@@ -124,6 +121,31 @@ void setup()
 
   waitForSync();
   myTZ.setLocation(F("America/Vancouver"));
+  timer_measure.start();
+  timer_display.start();
+  timer_mqtt.start();
+}
+
+void loop()
+{
+  client.loop();
+  Blynk.run();
+  timer.run();
+  timer_measure.update();
+  timer_display.update();
+  timer_mqtt.update();
+}
+
+void draw_background()
+{
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(x_1col, y_1row, "T");
+  display.drawString(x_1col, y_2row, "RH");
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(x_2col, y_1row, "'C");
+  display.drawString(x_2col, y_2row, "%");
 }
 
 void displayTime()
@@ -133,79 +155,68 @@ void displayTime()
   display.drawString(1, 9, myTZ.dateTime("m/d H:i"));
 }
 
-void loop()
+void read_sensor()
 {
-  bool wifi_ok = (WiFi.status() == WL_CONNECTED);
-  client.loop();
   rh_realtime = dht.readHumidity();
-  temp_realtime = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit
-
-  Blynk.run();
-  timer.run();
-
-  if (millis() >= avg_timer_due)
+  temp_realtime = dht.readTemperature();
+  rh_short_buffer.addPoint(rh_realtime);
+  t_short_buffer.addPoint(temp_realtime);
+  if (rh_short_buffer.ready())
   {
-    avg_timer_due += avg_sample_time;
-    rh_short_buffer.addPoint(rh_realtime);
-    t_short_buffer.addPoint(temp_realtime);
-    if (rh_short_buffer.ready())
-    {
-      rh_1s_mva = rh_short_buffer.getAvg();
-    }
-    else
-    {
-      rh_1s_mva = rh_realtime;
-    }
-    if (t_short_buffer.ready())
-    {
-      t_1s_mva = t_short_buffer.getAvg();
-    }
-    else
-    {
-      t_1s_mva = temp_realtime;
-    }
+    rh_1s_mva = rh_short_buffer.getAvg();
   }
-
-  if (millis() > mqtt_timer_due)
+  else
   {
-    String telemetry_json = "{\"t\":";
-    telemetry_json += String(t_1s_mva, 1);
-    telemetry_json += ",\"h\":";
-    telemetry_json += String(rh_1s_mva, 1);
-    telemetry_json += "}";
-    String tele_topic = MQTT_TOPIC_PREFIX;
-    tele_topic += THIS_DEVICE_ID;
-    tele_topic += MQTT_TOPIC_SUFFIX;
-    client.publish(tele_topic, telemetry_json);
-    mqtt_timer_due = millis() + mqtt_timer_int;
+    rh_1s_mva = rh_realtime;
   }
-  if (millis() > disp_timer_due)
+  if (t_short_buffer.ready())
   {
-    disp_timer_due += disp_timer_int;
-    uint16_t xc = x_1col + 14;
-    display.clear();
-    draw_background();
-    display.setFont(ArialMT_Plain_24);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(xc, y_1row - 2, String(t_1s_mva, 1));
-    display.drawString(xc, y_2row - 2, String(rh_1s_mva, 1));
-    displayTime();
-    display.drawLine(74, y_0row + 13, 128, y_0row + 13);
+    t_1s_mva = t_short_buffer.getAvg();
+  }
+  else
+  {
+    t_1s_mva = temp_realtime;
+  }
+}
 
-    if (wifi_ok)
-    {
-      display.setFont(ArialMT_Plain_10);
-      // display.drawString(x_2col, y_3row, "WiFi");
-      display.drawXbm(112, y_0row, Iot_Icon_width, Iot_Icon_height, wifi1_icon16x12);
-    }
-    if (Blynk.CONNECTED)
-    {
-      display.drawXbm(94, y_0row, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
-    }
-    if (client.isConnected())
-    {
-      display.drawXbm(76, y_0row, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
-    }
-    display.display();
-  };
+void send_dht_mqtt()
+{
+  String telemetry_json = "{\"t\":";
+  telemetry_json += String(t_1s_mva, 1);
+  telemetry_json += ",\"h\":";
+  telemetry_json += String(rh_1s_mva, 1);
+  telemetry_json += "}";
+  String tele_topic = MQTT_TOPIC_PREFIX;
+  tele_topic += THIS_DEVICE_ID;
+  tele_topic += MQTT_TOPIC_SUFFIX;
+  client.publish(tele_topic, telemetry_json);
+}
+
+void display_value()
+{
+  uint16_t xc = x_1col + 14;
+  display.clear();
+  draw_background();
+  display.setFont(ArialMT_Plain_24);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(xc, y_1row - 2, String(t_1s_mva, 1));
+  display.drawString(xc, y_2row - 2, String(rh_1s_mva, 1));
+  displayTime();
+  display.drawLine(74, y_0row + 13, 128, y_0row + 13);
+
+  if ((WiFi.status() == WL_CONNECTED))
+  {
+    display.setFont(ArialMT_Plain_10);
+    // display.drawString(x_2col, y_3row, "WiFi");
+    display.drawXbm(112, y_0row, Iot_Icon_width, Iot_Icon_height, wifi1_icon16x12);
+  }
+  if (Blynk.CONNECTED)
+  {
+    display.drawXbm(94, y_0row, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
+  }
+  if (client.isConnected())
+  {
+    display.drawXbm(76, y_0row, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
+  }
+  display.display();
 }
