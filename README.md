@@ -12,7 +12,7 @@
 - 128x64 OLED Display with SH1106 controller and I2C Interface
 - A mini breadboard
 
-![Wiring](pic/t_rh_station.jpg)
+![Wiring](pic/wiring.jpg)
 
 (Wemos D1 Mini as in the example)
 - D1 - SCL of display
