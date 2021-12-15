@@ -66,12 +66,9 @@ float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva;
 
 const unsigned long mqtt_timer_int = 60000L;
 const uint16_t avg_sample_time = 250, disp_timer_int = 1000;
-<<<<<<< HEAD
 
 void checkFirmware();
 void updateFirmware(uint8_t *data, size_t len);
-=======
->>>>>>> 0d336f4409fd3cc9e0118c55ef82dad373f40bfb
 
 void read_sensor();
 void display_value();
@@ -102,7 +99,7 @@ void sendSensor()
 
 void onConnectionEstablished()
 {
-  // Subscribe to "mytopic/test" and display received message to Serial
+  client_mqtt.publish("dt/misc/ip", WiFi.localIP());
 }
 
 void setup()
@@ -245,7 +242,6 @@ void display_value()
   }
   display.display();
 }
-<<<<<<< HEAD
 
 #if (OTA_UPDATE_ENABLE > 0)
 // https://github.com/kurimawxx00/webota-esp32/blob/main/WebOTA.ino
