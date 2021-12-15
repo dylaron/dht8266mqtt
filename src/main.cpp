@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <DHT.h> // Digital relative humidity & temperature sensor AM2302/DHT22
+#include "arduino_secrets.h"
 
 #ifdef ARDUINO_ESP8266_WEMOS_D1MINI
 //#include <WiFiClientSecure.h>
@@ -9,6 +10,7 @@
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 #include "DefinePin8266.h"
+#define HOST_OTA OTA_HOST_ESP8266
 #endif
 
 #ifdef ARDUINO_ESP32_DEV
@@ -16,6 +18,7 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 #include "DefinePin32.h"
+#define HOST_OTA OTA_HOST_ESP32
 #endif
 
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
@@ -27,8 +30,16 @@
 #include "SlopeTracker.h"
 #include "iconset_16x12.xbm"
 #include <ezTime.h>
-#include "arduino_secrets.h"
 #include <Ticker.h>
+
+#ifndef OTA_UPDATE_ENABLE
+#define OTA_UPDATE_ENABLE 0
+#endif
+
+#if (OTA_UPDATE_ENABLE > 0)
+#include <HTTPClient.h>
+HTTPClient client_http;
+#endif
 
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
@@ -41,7 +52,7 @@ char auth[] = BLYNK_AUTH_TOKEN;
 DHT dht(DHTPIN, DHTTYPE);
 BlynkTimer timer;
 
-EspMQTTClient client(
+EspMQTTClient client_mqtt(
     NULL,
     NULL,
     MQTT_BROKER,    // MQTT Broker server ip
@@ -55,6 +66,12 @@ float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva;
 
 const unsigned long mqtt_timer_int = 60000L;
 const uint16_t avg_sample_time = 250, disp_timer_int = 1000;
+<<<<<<< HEAD
+
+void checkFirmware();
+void updateFirmware(uint8_t *data, size_t len);
+=======
+>>>>>>> 0d336f4409fd3cc9e0118c55ef82dad373f40bfb
 
 void read_sensor();
 void display_value();
@@ -67,6 +84,8 @@ Ticker timer_mqtt(send_dht_mqtt, mqtt_timer_int);
 SlopeTracker t_short_buffer(4, avg_sample_time / 60000.0);
 SlopeTracker rh_short_buffer(4, avg_sample_time / 60000.0);
 uint8_t x_1col = 28, x_2col = 96, y_0row = 1, y_1row = 20, y_2row = 44;
+
+int totalLength; // total size of firmware
 
 Timezone myTZ;
 // Provide official timezone names
@@ -115,20 +134,26 @@ void setup()
   timer.setInterval(mqtt_timer_int, sendSensor);
 
   // Optionnal functionnalities of EspMQTTClient :
-  client.enableDebuggingMessages(); // Enable debugging messages sent to serial output
-  client.enableHTTPWebUpdater();    // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
-  client.enableLastWillMessage("TestClient/lastwill", "I am going offline");
+  client_mqtt.enableDebuggingMessages(); // Enable debugging messages sent to serial output
+  client_mqtt.enableHTTPWebUpdater();    // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
+  client_mqtt.enableLastWillMessage("TestClient/lastwill", "I am going offline");
 
   waitForSync();
   myTZ.setLocation(F("America/Vancouver"));
   timer_measure.start();
   timer_display.start();
   timer_mqtt.start();
+#if (OTA_UPDATE_ENABLE > 0)
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    checkFirmware();
+  }
+#endif
 }
 
 void loop()
 {
-  client.loop();
+  client_mqtt.loop();
   Blynk.run();
   timer.run();
   timer_measure.update();
@@ -189,7 +214,7 @@ void send_dht_mqtt()
   String tele_topic = MQTT_TOPIC_PREFIX;
   tele_topic += THIS_DEVICE_ID;
   tele_topic += MQTT_TOPIC_SUFFIX;
-  client.publish(tele_topic, telemetry_json);
+  client_mqtt.publish(tele_topic, telemetry_json);
 }
 
 void display_value()
@@ -214,9 +239,80 @@ void display_value()
   {
     display.drawXbm(94, y_0row, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
   }
-  if (client.isConnected())
+  if (client_mqtt.isConnected())
   {
     display.drawXbm(76, y_0row, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
   }
   display.display();
 }
+<<<<<<< HEAD
+
+#if (OTA_UPDATE_ENABLE > 0)
+// https://github.com/kurimawxx00/webota-esp32/blob/main/WebOTA.ino
+void checkFirmware()
+{
+  client_http.begin(HOST_OTA);
+  // Get file, just to check if each reachable
+  int resp = client_http.GET();
+  Serial.print("Response: ");
+  Serial.println(resp);
+  // If file is reachable, start downloading
+  if (resp > 0 && resp != 403) // 403 error
+  {
+    // get length of document (is -1 when Server sends no Content-Length header)
+    totalLength = client_http.getSize();
+    // transfer to local variable
+    int len = totalLength;
+    // this is required to start firmware update process
+    Update.begin(UPDATE_SIZE_UNKNOWN);
+    Serial.printf("FW Size: %u\n", totalLength);
+    // create buffer for read
+    uint8_t buff[128] = {0};
+    // get tcp stream
+    WiFiClient *stream = client_http.getStreamPtr();
+    // read all data from server
+    Serial.println("Updating firmware...");
+    while (client_http.connected() && (len > 0 || len == -1))
+    {
+      // get available data size
+      size_t size = stream->available();
+      if (size)
+      {
+        // read up to 128 byte
+        int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+        // pass to function
+        updateFirmware(buff, c);
+        if (len > 0)
+        {
+          len -= c;
+        }
+      }
+      delay(1);
+    }
+  }
+  else
+  {
+    Serial.println("Cannot download firmware file");
+  }
+  client_http.end();
+}
+
+// Function to update firmware incrementally
+// Buffer is declared to be 128 so chunks of 128 bytes
+// from firmware is written to device until server closes
+void updateFirmware(uint8_t *data, size_t len)
+{
+  int currentLength = 0;
+  Update.write(data, len);
+  currentLength += len;
+  // Print dots while waiting for update to finish
+  Serial.print('.');
+  // if current length of written firmware is not equal to total firmware size, repeat
+  if (currentLength != totalLength)
+    return;
+  Update.end(true);
+  Serial.printf("\nUpdate Success, Total Size: %u\nRebooting...\n", currentLength);
+  // Restart ESP32 to see changes
+  ESP.restart();
+}
+#endif
