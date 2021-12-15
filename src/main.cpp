@@ -99,7 +99,10 @@ void sendSensor()
 
 void onConnectionEstablished()
 {
-  client_mqtt.publish("dt/misc/ip", WiFi.localIP());
+  String topic = "dt/misc/";
+  topic += THIS_DEVICE_ID;
+  topic += "/ip";
+  client_mqtt.publish(topic, WiFi.localIP().toString());
 }
 
 void setup()
