@@ -54,7 +54,7 @@ EspMQTTClient client(
 float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva;
 
 const unsigned long mqtt_timer_int = 60000L;
-const uint8_t avg_sample_time = 250, disp_timer_int = 1000;
+const uint16_t avg_sample_time = 250, disp_timer_int = 1000;
 
 void read_sensor();
 void display_value();
