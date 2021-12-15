@@ -10,7 +10,6 @@
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 #include "DefinePin8266.h"
-#define HOST_OTA OTA_HOST_ESP8266
 #endif
 
 #ifdef ARDUINO_ESP32_DEV
@@ -18,7 +17,6 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 #include "DefinePin32.h"
-#define HOST_OTA OTA_HOST_ESP32
 #endif
 
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
@@ -32,11 +30,7 @@
 #include <ezTime.h>
 #include <Ticker.h>
 
-#ifndef OTA_UPDATE_ENABLE
-#define OTA_UPDATE_ENABLE 0
-#endif
-
-#if (OTA_UPDATE_ENABLE > 0)
+#if (defined(OTA_HOST_ESP32) && defined(ARDUINO_ESP32_DEV))
 #include <HTTPClient.h>
 HTTPClient client_http;
 #endif
@@ -143,7 +137,7 @@ void setup()
   timer_measure.start();
   timer_display.start();
   timer_mqtt.start();
-#if (OTA_UPDATE_ENABLE > 0)
+#if (defined(OTA_HOST_ESP32) && defined(ARDUINO_ESP32_DEV))
   if (WiFi.status() == WL_CONNECTED)
   {
     checkFirmware();
@@ -246,11 +240,11 @@ void display_value()
   display.display();
 }
 
-#if (OTA_UPDATE_ENABLE > 0)
+#if (defined(OTA_HOST_ESP32) && defined(ARDUINO_ESP32_DEV))
 // https://github.com/kurimawxx00/webota-esp32/blob/main/WebOTA.ino
 void checkFirmware()
 {
-  client_http.begin(HOST_OTA);
+  client_http.begin(OTA_HOST_ESP32);
   // Get file, just to check if each reachable
   int resp = client_http.GET();
   Serial.print("Response: ");
