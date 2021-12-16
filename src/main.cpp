@@ -41,6 +41,7 @@ WiFiManager wifiManager;
 
 char auth[] = BLYNK_AUTH_TOKEN;
 
+#define FIRMWARE_VER "1.0.0"
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -93,26 +94,33 @@ void sendSensor()
 
 void onConnectionEstablished()
 {
-  String topic = "dt/misc/";
+  String topic = MQTT_TOPIC_PREFIX;
   topic += THIS_DEVICE_ID;
-  topic += "/ip";
-  client_mqtt.publish(topic, WiFi.localIP().toString());
+  topic += "/misc";
+
+  DynamicJsonDocument misc_json(64);
+  misc_json["ip"] = WiFi.localIP().toString();
+  misc_json["version"] = FIRMWARE_VER;
+  char json_out[64];
+  int b = serializeJson(misc_json, json_out);
+  client_mqtt.publish(topic, json_out);
 }
 
 void setup()
 {
   // Debug console
   Serial.begin(9600);
-  
+
   display.init();
   display.flipScreenVertically();
   display.clear();
-  
+
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(4, 10, "DHT MQTT Station");
   display.drawString(4, 22, THIS_DEVICE_ID);
-  display.drawString(4, 36, "WiFi Connecting");
+  display.drawString(4, 36, FIRMWARE_VER);
+  display.drawString(4, 50, "Starting...");
   display.display();
 
   // connect_to_wifi();
@@ -209,15 +217,17 @@ void read_sensor()
 
 void send_dht_mqtt()
 {
-  String telemetry_json = "{\"t\":";
-  telemetry_json += String(t_1s_mva, 1);
-  telemetry_json += ",\"h\":";
-  telemetry_json += String(rh_1s_mva, 1);
-  telemetry_json += "}";
   String tele_topic = MQTT_TOPIC_PREFIX;
   tele_topic += THIS_DEVICE_ID;
   tele_topic += MQTT_TOPIC_SUFFIX;
-  client_mqtt.publish(tele_topic, telemetry_json);
+
+  DynamicJsonDocument tele_json(64);
+  tele_json["t"] = t_1s_mva;
+  tele_json["h"] = rh_1s_mva;
+  char json_out[64];
+  int b = serializeJson(tele_json, json_out);
+
+  client_mqtt.publish(tele_topic, json_out);
 }
 
 void display_value()
