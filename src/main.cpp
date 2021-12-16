@@ -103,6 +103,18 @@ void setup()
 {
   // Debug console
   Serial.begin(9600);
+  
+  display.init();
+  display.flipScreenVertically();
+  display.clear();
+  
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(4, 10, "DHT MQTT Station");
+  display.drawString(4, 22, THIS_DEVICE_ID);
+  display.drawString(4, 36, "WiFi Connecting");
+  display.display();
+
   // connect_to_wifi();
   wifiManager.setTimeout(180);
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
@@ -119,9 +131,6 @@ void setup()
     // You can also specify server:
     // Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
   }
-  display.init();
-  display.flipScreenVertically();
-  display.clear();
   dht.begin();
 
   // Setup a function to be called every second
