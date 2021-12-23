@@ -41,7 +41,7 @@ WiFiManager wifiManager;
 
 char auth[] = BLYNK_AUTH_TOKEN;
 
-#define FIRMWARE_VER "1.0.0"
+#define FIRMWARE_VER "1.1.0"
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -57,7 +57,8 @@ EspMQTTClient client_mqtt(
     1883            // The MQTT port, default to 1883. this line can be omitted
 );
 
-float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva;
+float temp_realtime, rh_realtime, rh_1s_mva, t_1s_mva,
+    temp_outside = 0;
 
 const unsigned long mqtt_timer_int = 60000L;
 const uint16_t avg_sample_time = 250, disp_timer_int = 1000;
@@ -75,7 +76,7 @@ Ticker timer_mqtt(send_dht_mqtt, mqtt_timer_int);
 
 SlopeTracker t_short_buffer(4, avg_sample_time / 60000.0);
 SlopeTracker rh_short_buffer(4, avg_sample_time / 60000.0);
-uint8_t x_1col = 28, x_2col = 96, y_0row = 1, y_1row = 20, y_2row = 44;
+uint8_t x_1col = 14, x_2col = 68, x_3col = 92, y_0row = 1, y_1row = 20, y_2row = 44;
 
 int totalLength; // total size of firmware
 
@@ -104,6 +105,18 @@ void onConnectionEstablished()
   char json_out[64];
   int b = serializeJson(misc_json, json_out);
   client_mqtt.publish(topic, json_out);
+
+  String topic_outside = MQTT_TOPIC_PREFIX;
+  topic_outside += "outside";
+  client_mqtt.subscribe(topic_outside, [](const String &payload)
+                        {
+                     StaticJsonDocument<100> doc;
+                     char json[100];
+                     payload.toCharArray(json, payload.length() + 1);
+                     deserializeJson(doc, json);
+                     const int cursor_indent = 10;
+                     // Serial.println(payload);
+                     temp_outside = doc["temp"]; });
 }
 
 void setup()
@@ -117,10 +130,10 @@ void setup()
 
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(4, 10, "DHT MQTT Station");
-  display.drawString(4, 22, THIS_DEVICE_ID);
-  display.drawString(4, 36, FIRMWARE_VER);
-  display.drawString(4, 50, "Starting...");
+  display.drawString(4, 6, "DHT MQTT Station");
+  display.drawString(4, 18, THIS_DEVICE_ID);
+  display.drawString(4, 32, FIRMWARE_VER);
+  display.drawString(4, 46, "Starting...");
   display.display();
 
   // connect_to_wifi();
@@ -178,6 +191,7 @@ void draw_background()
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.drawString(x_1col, y_1row, "T");
   display.drawString(x_1col, y_2row, "RH");
+  display.drawString(128, y_2row, "Outside");
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(x_2col, y_1row, "'C");
@@ -187,6 +201,7 @@ void draw_background()
 void displayTime()
 {
   display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(1, 0, myTZ.dateTime("l"));
   display.drawString(1, 9, myTZ.dateTime("m/d H:i"));
 }
@@ -232,13 +247,14 @@ void send_dht_mqtt()
 
 void display_value()
 {
-  uint16_t xc = x_1col + 14;
   display.clear();
   draw_background();
   display.setFont(ArialMT_Plain_24);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(xc, y_1row - 2, String(t_1s_mva, 1));
-  display.drawString(xc, y_2row - 2, String(rh_1s_mva, 1));
+  display.drawString(x_1col + 2, y_1row - 2, String(t_1s_mva, 1));
+  display.drawString(x_1col + 2, y_2row - 2, String(rh_1s_mva, 1));
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(128, y_1row - 2, String(temp_outside, 1));
   displayTime();
   display.drawLine(74, y_0row + 13, 128, y_0row + 13);
 
