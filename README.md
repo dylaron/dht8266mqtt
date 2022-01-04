@@ -2,6 +2,7 @@
 - A Clock that gets accurate time from the internet
 - T & RH Display
 - IoT Sensor sends the T & RH measurement to Blynk, and/or any MQTT broker of your choice
+- Displaying outside temperature getting from MQTT
 
 ![Picture](pic/t_rh_station.jpg)
 
@@ -35,3 +36,7 @@ Create `arduino_secrets.h` as below
 
 #define THIS_DEVICE_ID "ThisCoolESP"
 ```
+
+ MQTT topic for outside temperature (weather): 'dt/...../outside'
+ i.e.,
+ `{"temp": 23.0}`

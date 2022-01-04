@@ -41,7 +41,7 @@ WiFiManager wifiManager;
 
 char auth[] = BLYNK_AUTH_TOKEN;
 
-#define FIRMWARE_VER "1.1.0"
+#define FIRMWARE_VER "1.1.1"
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -130,10 +130,11 @@ void setup()
 
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(4, 6, "DHT MQTT Station");
-  display.drawString(4, 18, THIS_DEVICE_ID);
-  display.drawString(4, 32, FIRMWARE_VER);
-  display.drawString(4, 46, "Starting...");
+  const uint8 left_margin = 4;
+  display.drawString(left_margin, 6, "DHT MQTT Station");
+  display.drawString(left_margin, 18, THIS_DEVICE_ID);
+  display.drawString(left_margin, 32, FIRMWARE_VER);
+  display.drawString(left_margin, 46, "Starting...");
   display.display();
 
   // connect_to_wifi();
@@ -250,10 +251,9 @@ void display_value()
   display.clear();
   draw_background();
   display.setFont(ArialMT_Plain_24);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(x_1col + 2, y_1row - 2, String(t_1s_mva, 1));
-  display.drawString(x_1col + 2, y_2row - 2, String(rh_1s_mva, 1));
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(x_2col - 2, y_1row - 2, String(t_1s_mva, 1));
+  display.drawString(x_2col - 2, y_2row - 2, String(rh_1s_mva, 1));
   display.drawString(128, y_1row - 2, String(temp_outside, 1));
   displayTime();
   display.drawLine(74, y_0row + 13, 128, y_0row + 13);
@@ -274,73 +274,3 @@ void display_value()
   }
   display.display();
 }
-
-#if (defined(OTA_HOST_ESP32) && defined(ARDUINO_ESP32_DEV))
-// https://github.com/kurimawxx00/webota-esp32/blob/main/WebOTA.ino
-void checkFirmware()
-{
-  client_http.begin(OTA_HOST_ESP32);
-  // Get file, just to check if each reachable
-  int resp = client_http.GET();
-  Serial.print("Response: ");
-  Serial.println(resp);
-  // If file is reachable, start downloading
-  if (resp > 0 && resp != 403) // 403 error
-  {
-    // get length of document (is -1 when Server sends no Content-Length header)
-    totalLength = client_http.getSize();
-    // transfer to local variable
-    int len = totalLength;
-    // this is required to start firmware update process
-    Update.begin(UPDATE_SIZE_UNKNOWN);
-    Serial.printf("FW Size: %u\n", totalLength);
-    // create buffer for read
-    uint8_t buff[128] = {0};
-    // get tcp stream
-    WiFiClient *stream = client_http.getStreamPtr();
-    // read all data from server
-    Serial.println("Updating firmware...");
-    while (client_http.connected() && (len > 0 || len == -1))
-    {
-      // get available data size
-      size_t size = stream->available();
-      if (size)
-      {
-        // read up to 128 byte
-        int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-        // pass to function
-        updateFirmware(buff, c);
-        if (len > 0)
-        {
-          len -= c;
-        }
-      }
-      delay(1);
-    }
-  }
-  else
-  {
-    Serial.println("Cannot download firmware file");
-  }
-  client_http.end();
-}
-
-// Function to update firmware incrementally
-// Buffer is declared to be 128 so chunks of 128 bytes
-// from firmware is written to device until server closes
-void updateFirmware(uint8_t *data, size_t len)
-{
-  int currentLength = 0;
-  Update.write(data, len);
-  currentLength += len;
-  // Print dots while waiting for update to finish
-  Serial.print('.');
-  // if current length of written firmware is not equal to total firmware size, repeat
-  if (currentLength != totalLength)
-    return;
-  Update.end(true);
-  Serial.printf("\nUpdate Success, Total Size: %u\nRebooting...\n", currentLength);
-  // Restart ESP32 to see changes
-  ESP.restart();
-}
-#endif
