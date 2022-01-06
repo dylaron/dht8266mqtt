@@ -8,14 +8,12 @@
 //#include <ESP8266HTTPClient.h>
 //#include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
 #include "DefinePin8266.h"
 #endif
 
 #ifdef ARDUINO_ESP32_DEV
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
 #include "DefinePin32.h"
 #endif
 
@@ -39,13 +37,10 @@ SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
 WiFiManager wifiManager;
 
-char auth[] = BLYNK_AUTH_TOKEN;
-
-#define FIRMWARE_VER "1.1.1"
-#define DHTTYPE DHT22 // DHT 22 (AM2302)
+#define FIRMWARE_VER "1.2.0" // No Blynk
+#define DHTTYPE DHT22        // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
-BlynkTimer timer;
 
 EspMQTTClient client_mqtt(
     NULL,
@@ -87,11 +82,6 @@ Timezone myTZ;
 // This function sends Arduino's up time every second to Virtual Pin (5).
 // In the app, Widget's reading frequency should be set to PUSH. This means
 // that you define how often to send data to Blynk App.
-void sendSensor()
-{
-  Blynk.virtualWrite(V5, rh_1s_mva);
-  Blynk.virtualWrite(V6, t_1s_mva);
-}
 
 void onConnectionEstablished()
 {
@@ -146,22 +136,11 @@ void setup()
   wifiManager.autoConnect("AutoConnectAP");
   delay(2000);
 
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.println("connected...yeey :)");
-    Blynk.config(auth, IPAddress(64, 225, 16, 22), 8080);
-    // You can also specify server:
-    // Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
-  }
   dht.begin();
-
-  // Setup a function to be called every second
-  timer.setInterval(mqtt_timer_int, sendSensor);
 
   // Optionnal functionnalities of EspMQTTClient :
   client_mqtt.enableDebuggingMessages(); // Enable debugging messages sent to serial output
   client_mqtt.enableHTTPWebUpdater();    // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
-  client_mqtt.enableLastWillMessage("TestClient/lastwill", "I am going offline");
 
   waitForSync();
   myTZ.setLocation(F("America/Vancouver"));
@@ -179,8 +158,6 @@ void setup()
 void loop()
 {
   client_mqtt.loop();
-  Blynk.run();
-  timer.run();
   timer_measure.update();
   timer_display.update();
   timer_mqtt.update();
@@ -256,7 +233,7 @@ void display_value()
   display.drawString(x_2col - 2, y_2row - 2, String(rh_1s_mva, 1));
   display.drawString(128, y_1row - 2, String(temp_outside, 1));
   displayTime();
-  display.drawLine(74, y_0row + 13, 128, y_0row + 13);
+  // display.drawLine(74, y_0row + 13, 128, y_0row + 13);
 
   if ((WiFi.status() == WL_CONNECTED))
   {
@@ -264,13 +241,9 @@ void display_value()
     // display.drawString(x_2col, y_3row, "WiFi");
     display.drawXbm(112, y_0row, Iot_Icon_width, Iot_Icon_height, wifi1_icon16x12);
   }
-  if (Blynk.CONNECTED)
-  {
-    display.drawXbm(94, y_0row, Iot_Icon_width, Iot_Icon_height, blynk_icon16x12);
-  }
   if (client_mqtt.isConnected())
   {
-    display.drawXbm(76, y_0row, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
+    display.drawXbm(94, y_0row, Iot_Icon_width, Iot_Icon_height, mqtt_icon16x12);
   }
   display.display();
 }

@@ -1,7 +1,7 @@
 ## What is it?
 - A Clock that gets accurate time from the internet
 - T & RH Display
-- IoT Sensor sends the T & RH measurement to Blynk, and/or any MQTT broker of your choice
+- IoT Sensor sends the T & RH measurement to an MQTT broker
 - Displaying outside temperature getting from MQTT
 
 ![Picture](pic/t_rh_station.jpg)
@@ -24,10 +24,6 @@
 ## configuration
 Create `arduino_secrets.h` as below
 ```
-#define BLYNK_TEMPLATE_ID "....."
-#define BLYNK_DEVICE_NAME "....."
-#define BLYNK_AUTH_TOKEN "..............."
-
 #define MQTT_BROKER "**.**.**.**"
 #define MQTT_USER "..."
 #define MQTT_PASS "..."
