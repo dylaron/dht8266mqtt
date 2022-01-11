@@ -37,7 +37,7 @@ SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
 WiFiManager wifiManager;
 
-#define FIRMWARE_VER "1.2.0" // No Blynk
+#define FIRMWARE_VER "1.2.1" // No Blynk
 #define DHTTYPE DHT22        // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -71,7 +71,7 @@ Ticker timer_mqtt(send_dht_mqtt, mqtt_timer_int);
 
 SlopeTracker t_short_buffer(4, avg_sample_time / 60000.0);
 SlopeTracker rh_short_buffer(4, avg_sample_time / 60000.0);
-uint8_t x_1col = 14, x_2col = 68, x_3col = 92, y_0row = 1, y_1row = 20, y_2row = 44;
+const uint8_t x_1col = 14, x_2col = 68, x_3col = 92, y_0row = 1, y_1row = 20, y_2row = 44, left_margin = 4;
 
 int totalLength; // total size of firmware
 
@@ -120,7 +120,6 @@ void setup()
 
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  const uint8 left_margin = 4;
   display.drawString(left_margin, 6, "DHT MQTT Station");
   display.drawString(left_margin, 18, THIS_DEVICE_ID);
   display.drawString(left_margin, 32, FIRMWARE_VER);
