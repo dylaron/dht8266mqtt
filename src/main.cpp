@@ -37,7 +37,7 @@ SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL
 
 WiFiManager wifiManager;
 
-#define FIRMWARE_VER "1.2.1" // No Blynk
+#define FIRMWARE_VER "1.2.2" // No Blynk
 #define DHTTYPE DHT22        // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -48,7 +48,7 @@ EspMQTTClient client_mqtt(
     MQTT_BROKER,    // MQTT Broker server ip
     MQTT_USER,      // Can be omitted if not needed
     MQTT_PASS,      // Can be omitted if not needed
-    THIS_DEVICE_ID, // Client name that uniquely identify your device
+    THIS_DEVICE_LOC, // Client name that uniquely identify your device
     1883            // The MQTT port, default to 1883. this line can be omitted
 );
 
@@ -86,13 +86,16 @@ Timezone myTZ;
 void onConnectionEstablished()
 {
   String topic = MQTT_TOPIC_PREFIX;
-  topic += THIS_DEVICE_ID;
+  topic += THIS_DEVICE_LOC;
+  // topic += WiFi.getHostname();
   topic += "/misc";
 
-  DynamicJsonDocument misc_json(64);
+  DynamicJsonDocument misc_json(96);
   misc_json["ip"] = WiFi.localIP().toString();
+  misc_json["hostname"] = WiFi.getHostname();
+  misc_json["location"] = THIS_DEVICE_LOC;
   misc_json["version"] = FIRMWARE_VER;
-  char json_out[64];
+  char json_out[96];
   int b = serializeJson(misc_json, json_out);
   client_mqtt.publish(topic, json_out);
 
@@ -121,7 +124,7 @@ void setup()
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(left_margin, 6, "DHT MQTT Station");
-  display.drawString(left_margin, 18, THIS_DEVICE_ID);
+  display.drawString(left_margin, 18, THIS_DEVICE_LOC);
   display.drawString(left_margin, 32, FIRMWARE_VER);
   display.drawString(left_margin, 46, "Starting...");
   display.display();
@@ -210,7 +213,7 @@ void read_sensor()
 void send_dht_mqtt()
 {
   String tele_topic = MQTT_TOPIC_PREFIX;
-  tele_topic += THIS_DEVICE_ID;
+  tele_topic += THIS_DEVICE_LOC;
   tele_topic += MQTT_TOPIC_SUFFIX;
 
   DynamicJsonDocument tele_json(64);

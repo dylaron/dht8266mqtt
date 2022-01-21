@@ -30,7 +30,7 @@ Create `arduino_secrets.h` as below
 #define MQTT_TOPIC_PREFIX "dt/..../"
 #define MQTT_TOPIC_SUFFIX "/..."
 
-#define THIS_DEVICE_ID "ThisCoolESP"
+#define THIS_DEVICE_LOC "LivingRoom"
 ```
 
  MQTT topic for outside temperature (weather): 'dt/...../outside'

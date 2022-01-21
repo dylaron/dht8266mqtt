@@ -1,1 +1,1 @@
-#define DHTPIN D4
+#define DHTPIN D5
